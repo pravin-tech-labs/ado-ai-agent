@@ -1,5 +1,0 @@
-2026-08-06 15:53:46.170 | INFO     | __main__:<module>:3 - Starting the application...
-2026-08-06 15:53:46.171 | DEBUG    | __main__:<module>:4 - Debugging information: Application initialized successfully.
-2026-08-06 15:53:46.171 | WARNING  | __main__:<module>:5 - This is a warning message.
-2026-08-06 15:53:46.172 | ERROR    | __main__:<module>:6 - An error occurred while processing the request.
-2026-08-06 15:53:46.172 | SUCCESS  | __main__:<module>:7 - The operation completed successfully.

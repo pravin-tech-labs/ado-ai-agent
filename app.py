@@ -1,7 +1,7 @@
-from utils.logger import logger
+from tools.git_tool import GitTool
 
-logger.info("Starting the application...")
-logger.debug("Debugging information: Application initialized successfully.")
-logger.warning("This is a warning message.")
-logger.error("An error occurred while processing the request.")
-logger.success("The operation completed successfully.")
+git_tool = GitTool()
+
+status = git_tool.get_repository_status()
+
+print(git_tool.get_all_changed_files())
