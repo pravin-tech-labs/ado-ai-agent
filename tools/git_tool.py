@@ -179,8 +179,27 @@ class GitTool:
     # Branch
     # ==========================================================
 
-    def create_branch(self, branch_name: str):
-        pass
+    def create_branch(self, branch_name: str) -> str:
+        try:
+            # Validate the branch name before creating it
+            self.validate_branch_name(branch_name)
+
+            # Check if the branch already exists
+            if self.is_branch_exists(branch_name):
+                raise ValueError(f"Branch '{branch_name}' already exists.")
+
+            # Create the new branch
+            new_branch = self.repo.create_head(branch_name)
+
+            # Checkout the new branch
+            new_branch.checkout()
+
+            logger.info(f"Branch '{branch_name}' created successfully.")
+            return new_branch.name
+
+        except Exception as error:
+            logger.error(f"Failed to create branch '{branch_name}': {error}")
+            raise
 
     def checkout_branch(self, branch_name: str):
         pass
@@ -190,6 +209,47 @@ class GitTool:
 
     def get_all_branches(self) -> List[str]:
         pass
+
+    def is_branch_exists(self, branch_name: str) -> bool:
+        try:
+            exists = branch_name in [branch.name for branch in self.repo.branches]
+            logger.info(f"Branch '{branch_name}' exists: {exists}")
+            return exists
+        
+        except Exception as error:
+            logger.error(f"Failed to check if branch exists: {error}")
+            raise
+
+    def validate_branch_name(self, branch_name: str) -> bool:
+        if not branch_name or not branch_name.strip():
+            raise ValueError(
+                "Branch name cannot be empty."
+            )
+
+        if branch_name.startswith("/") or branch_name.endswith("/"):
+            raise ValueError(
+                "Branch name cannot start or end with '/'."
+            )
+
+        if "//" in branch_name:
+            raise ValueError(
+                "Branch name cannot contain consecutive '/'."
+            )
+
+        if " " in branch_name:
+            raise ValueError(
+                "Branch name cannot contain spaces."
+            )
+
+        if "\\" in branch_name:
+            raise ValueError(
+                "Branch name cannot contain '\\'."
+            )
+        
+        logger.info(
+            f"Branch name '{branch_name}' is valid."
+        )
+        return True
 
     # ==========================================================
     # Remote
