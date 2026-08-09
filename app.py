@@ -1,7 +1,6 @@
 from tools.git_tool import GitTool
 
 git_tool = GitTool()
-
-status = git_tool.get_repository_status()
-
-print(git_tool.is_branch_exists("feature/ado"))
+new_branch = git_tool.create_branch("feature/ado")
+print(f"Created branch: {new_branch}")
+print(f"Current branch: {git_tool.get_current_branch()}")

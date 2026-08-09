@@ -202,7 +202,22 @@ class GitTool:
             raise
 
     def checkout_branch(self, branch_name: str):
-        pass
+        try:
+            # Validate the branch name before checking it out
+            self.validate_branch_name(branch_name)
+
+            # Check if the branch exists
+            if not self.is_branch_exists(branch_name):
+                raise ValueError(f"Branch '{branch_name}' does not exist.")
+
+            # Checkout the branch
+            branch = self.repo.branches[branch_name]
+            branch.checkout()
+            logger.info(f"Checked out to branch '{branch_name}' successfully.")
+
+        except Exception as error:
+            logger.error(f"Failed to checkout branch '{branch_name}': {error}")
+            raise
 
     def delete_branch(self, branch_name: str):
         pass
