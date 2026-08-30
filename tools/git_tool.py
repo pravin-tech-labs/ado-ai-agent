@@ -396,8 +396,51 @@ class GitTool:
     # Merge
     # ==========================================================
 
-    def merge_branch(self, source_branch: str):
-        pass
+    def merge_branch(
+        self,
+        source_branch: str,
+        target_branch: str
+    ) -> str:
+        try:
+            if not source_branch or not target_branch:
+                raise ValueError(
+                    "Source and target branch names are required."
+                )
+
+            if source_branch == target_branch:
+                raise ValueError(
+                    "Source and target branches cannot be the same."
+                )
+
+            if not self.is_branch_exists(source_branch):
+                raise ValueError(
+                    f"Source branch '{source_branch}' does not exist."
+                )
+
+            if not self.is_branch_exists(target_branch):
+                raise ValueError(
+                    f"Target branch '{target_branch}' does not exist."
+                )
+
+            current_branch = self.get_current_branch()
+
+            if current_branch != target_branch:
+                self.checkout_branch(target_branch)
+
+            self.repo.git.merge(source_branch)
+
+            logger.info(
+                f"Successfully merged '{source_branch}' "
+                f"into '{target_branch}'."
+            )
+            return target_branch
+
+        except Exception as error:
+            logger.error(
+                f"Failed to merge '{source_branch}' "
+                f"into '{target_branch}': {error}"
+            )
+            raise
 
     def has_merge_conflicts(self) -> bool:
         pass
