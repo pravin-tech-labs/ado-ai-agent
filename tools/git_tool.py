@@ -469,17 +469,85 @@ class GitTool:
     # Stash
     # ==========================================================
 
-    def stash(self):
-        pass
+    def do_stash_changes(self) -> str:
+        try:
+            result = self.repo.git.stash(
+                "push"
+            )
 
-    def stash_list(self):
-        pass
+            logger.info(
+                "Changes successfully stashed."
+            )
 
-    def stash_apply(self, stash_index: int = 0):
-        pass
+            return result
 
-    def stash_pop(self):
-        pass
+        except Exception as error:
+            logger.error(
+                f"Failed to stash changes: {error}"
+            )
+            raise
+
+    def do_stash_list(self) -> list[str]:
+        try:
+            stashes = list(
+                self.repo.git.stash(
+                    "list"
+                ).splitlines()
+            )
+
+            logger.info(
+                f"Available stashes: {len(stashes)}"
+            )
+
+            return stashes
+
+        except Exception as error:
+            logger.error(
+                f"Failed to retrieve stash list: {error}"
+            )
+            raise
+
+    def do_stash_apply(
+        self,
+        stash_index: int = 0
+    ) -> str:
+        try:
+            stash_reference = f"stash@{{{stash_index}}}"
+
+            self.repo.git.stash(
+                "apply",
+                stash_reference
+            )
+
+            logger.info(
+                f"Applied stash '{stash_reference}'."
+            )
+
+            return stash_reference
+
+        except Exception as error:
+            logger.error(
+                f"Failed to apply stash: {error}"
+            )
+            raise
+
+    def do_stash_pop(self) -> str:
+        try:
+            result = self.repo.git.stash(
+                "pop"
+            )
+
+            logger.info(
+                "Latest stash successfully popped."
+            )
+
+            return result
+
+        except Exception as error:
+            logger.error(
+                f"Failed to pop stash: {error}"
+            )
+            raise
 
     def stash_drop(self, stash_index: int = 0):
         pass
@@ -488,11 +556,55 @@ class GitTool:
     # Reset
     # ==========================================================
 
-    def soft_reset(self, commit_hash: str):
-        pass
+    def do_soft_reset(self, commit_hash: str) -> str:
+        try:
+            if not commit_hash:
+                raise ValueError(
+                    "Commit hash is required."
+                )
 
-    def hard_reset(self, commit_hash: str):
-        pass
+            self.repo.git.reset(
+                "--soft",
+                commit_hash
+            )
+
+            logger.info(
+                f"Soft reset performed to commit "
+                f"'{commit_hash}'."
+            )
+
+            return commit_hash
+
+        except Exception as error:
+            logger.error(
+                f"Failed to perform soft reset: {error}"
+            )
+            raise
+
+    def do_hard_reset(self, commit_hash: str) -> str:
+        try:
+            if not commit_hash:
+                raise ValueError(
+                    "Commit hash is required."
+                )
+
+            self.repo.git.reset(
+                "--hard",
+                commit_hash
+            )
+
+            logger.warning(
+                f"Hard reset performed to commit "
+                f"'{commit_hash}'."
+            )
+
+            return commit_hash
+
+        except Exception as error:
+            logger.error(
+                f"Failed to perform hard reset: {error}"
+            )
+            raise
 
     # ==========================================================
     # Staging Operations
