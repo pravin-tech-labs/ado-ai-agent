@@ -311,13 +311,52 @@ class GitTool:
     def fetch(self):
         pass
 
-    def pull(
+    def pull_changes(
         self,
         remote: str = "origin",
-        branch_name: Optional[str] = None,
-    ):
-        pass
+        branch_name: str | None = None,
+    ) -> str:
+        try:
+            if remote not in self.repo.remotes:
+                raise ValueError(
+                    f"Remote '{remote}' does not exist."
+                )
 
+            if branch_name is None:
+                branch_name = self.get_current_branch()
+
+            if not self.is_branch_exists(branch_name):
+                raise ValueError(
+                    f"Branch '{branch_name}' does not exist."
+                )
+            
+            current_branch = self.get_current_branch()
+
+            if current_branch != branch_name:
+                raise ValueError(
+                    f"Branch '{branch_name}' is not the "
+                    f"current branch. Current branch: "
+                    f"'{current_branch}'."
+                )
+
+            remote_repo = self.repo.remote(remote)
+
+            remote_repo.pull()
+
+            logger.info(
+                f"Successfully pulled changes for "
+                f"branch '{branch_name}' from '{remote}'."
+            )
+
+            return branch_name
+
+        except Exception as error:
+            logger.error(
+                f"Failed to pull branch "
+                f"'{branch_name}' from '{remote}': {error}"
+            )
+            raise
+        
     def push_changes(
         self,
         remote: str = "origin",
