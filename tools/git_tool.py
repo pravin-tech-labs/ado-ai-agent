@@ -442,8 +442,28 @@ class GitTool:
             )
             raise
 
-    def has_merge_conflicts(self) -> bool:
-        pass
+    def merge_conflicts(self) -> list[str]:
+        try:
+            conflicts = list(
+                self.repo.index.unmerged_blobs().keys()
+            )
+
+            if conflicts:
+                logger.warning(
+                    f"Merge conflicts detected: {conflicts}"
+                )
+            else:
+                logger.info(
+                    "No merge conflicts detected."
+                )
+
+            return conflicts
+
+        except Exception as error:
+            logger.error(
+                f"Failed to detect merge conflicts: {error}"
+            )
+            raise
 
     # ==========================================================
     # Stash
