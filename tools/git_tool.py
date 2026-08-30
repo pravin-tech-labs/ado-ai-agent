@@ -340,14 +340,11 @@ class GitTool:
                 )
 
             remote_repo = self.repo.remote(remote)
-
             remote_repo.pull()
-
             logger.info(
                 f"Successfully pulled changes for "
                 f"branch '{branch_name}' from '{remote}'."
             )
-
             return branch_name
 
         except Exception as error:
@@ -386,6 +383,7 @@ class GitTool:
                 f"'{branch_name}' to remote '{remote}'."
             )
             return branch_name
+            
         except Exception as error:
             logger.error(
                 f"Failed to push branch "
