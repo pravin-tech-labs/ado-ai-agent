@@ -318,12 +318,42 @@ class GitTool:
     ):
         pass
 
-    def push(
+    def push_changes(
         self,
         remote: str = "origin",
-        branch_name: Optional[str] = None,
-    ):
-        pass
+        branch_name: str | None = None,
+    ) -> str:
+        try:
+            if remote not in self.repo.remotes:
+                raise ValueError(
+                    f"Remote '{remote}' does not exist."
+                )
+
+            if branch_name is None:
+                branch_name = self.get_current_branch()
+
+            if not self.is_branch_exists(branch_name):
+                raise ValueError(
+                    f"Branch '{branch_name}' does not exist."
+                )
+            
+            remote_repo = self.repo.remote(remote)
+            remote_repo.push(
+                branch_name,
+                set_upstream=True
+            )
+            logger.info(
+                f"Successfully pushed branch "
+                f"'{branch_name}' to remote '{remote}'."
+            )
+            return branch_name
+        except Exception as error:
+            logger.error(
+                f"Failed to push branch "
+                f"'{branch_name}' to remote '{remote}': {error}"
+            )
+            raise
+
 
     # ==========================================================
     # Merge
