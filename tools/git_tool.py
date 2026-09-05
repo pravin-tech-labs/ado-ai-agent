@@ -1,8 +1,8 @@
-from typing import List, Optional
 from git import Repo
 from git.exc import InvalidGitRepositoryError, NoSuchPathError
 from utils.logger import logger
 from models.git_status import GitStatus
+from pathlib import Path
 
 
 class GitTool:
@@ -34,22 +34,7 @@ class GitTool:
     # ==========================================================
 
     def is_git_repository(self) -> bool:
-        try:
-            return self.repo is not None
-        except (InvalidGitRepositoryError, NoSuchPathError):
-            return False
-
-    def get_repository_root(self) -> str:
-        pass
-
-    def get_status(self) -> str:
-        try:
-            status = self.repo.git.status()
-            logger.info(f"Repository status:\n{status}")
-            return status
-        except Exception as error:
-            logger.error(f"Error occurred while fetching repository status: {error}")
-            raise
+        return self.repo is not None
 
     def get_current_branch(self) -> str:
         try:
@@ -82,10 +67,10 @@ class GitTool:
             logger.error(f"Error occurred while fetching repository status: {error}")
             raise
 
-    def get_all_changed_files(self) -> List[str]:
+    def get_all_changed_files(self) -> list[str]:
         try:
             all_files = set(self.get_modified_files() + self.get_staged_files() + self.get_untracked_files())
-            changed_files = list(all_files)
+            changed_files = sorted(all_files)
             logger.info(f"All changed files: {changed_files}")
             return changed_files
 
@@ -107,7 +92,7 @@ class GitTool:
             logger.error(f"Failed to check repository changes: {error}")
             raise
 
-    def get_modified_files(self) -> List[str]:
+    def get_modified_files(self) -> list[str]:
         try:
             modified_files = [item.a_path for item in self.repo.index.diff(None)]
             logger.info(f"Modified files: {modified_files}")
@@ -117,7 +102,7 @@ class GitTool:
             logger.error(f"Failed to get modified files: {error}")
             raise
 
-    def get_staged_files(self) -> List[str]:
+    def get_staged_files(self) -> list[str]:
         try:
             staged_files = [item.a_path for item in self.repo.index.diff("HEAD")]
             logger.info(f"Staged files: {staged_files}")
@@ -127,7 +112,7 @@ class GitTool:
             logger.error(f"Failed to get staged files: {error}")
             raise
 
-    def get_untracked_files(self) -> List[str]:
+    def get_untracked_files(self) -> list[str]:
         try:
             untracked_files = self.repo.untracked_files
             logger.info(f"Untracked files: {untracked_files}")
@@ -137,61 +122,48 @@ class GitTool:
             logger.error(f"Failed to get untracked files: {error}")
             raise
 
-    def get_diff(self) -> str:
-        pass
-
-    def get_staged_diff(self) -> str:
-        pass
-
-    # ==========================================================
-    # Staging
-    # ==========================================================
-
-    def stage_file(self, file_path: str):
-        pass
-
-    def stage_files(self, files: List[str]):
-        pass
-
-    def stage_all_changes(self):
-        pass
-
-    def unstage_file(self, file_path: str):
-        pass
-
     # ==========================================================
     # Commit
     # ==========================================================
 
     def commit_changes(self, message: str) -> str:
         try:
-            if not message or not message.strip():
-                raise ValueError("Commit message cannot be empty.")
+            if not isinstance(message, str):
+                raise ValueError(
+                    "Commit message must be a string."
+                )
 
-            staged_changes = self.repo.index.diff("HEAD")
+            if not message.strip():
+                raise ValueError(
+                    "Commit message cannot be empty."
+                )
+
+            message = message.strip()
+
+            staged_changes = self.repo.git.diff(
+                "--cached",
+                "--name-only"
+            ).splitlines()
 
             if not staged_changes:
-                raise RuntimeError("No changes to commit.")
+                raise RuntimeError(
+                    "No staged changes to commit."
+                )
 
             commit = self.repo.index.commit(message)
+
             logger.info(
                 f"Commit created successfully: "
                 f"{commit.hexsha[:8]} - {message}"
             )
+
             return commit.hexsha
 
         except Exception as error:
-            logger.error(f"Failed to commit changes: {error}")
+            logger.error(
+                f"Failed to commit changes: {error}"
+            )
             raise
-
-    def amend_last_commit(self):
-        pass
-
-    def get_latest_commit(self) -> str:
-        pass
-
-    def get_commit_history(self, limit: int = 10):
-        pass
 
     # ==========================================================
     # Branch
@@ -229,7 +201,7 @@ class GitTool:
                 raise ValueError(f"Branch '{branch_name}' does not exist.")
 
             # Check Uncommitted changes before switching branches
-            if self.has_uncommited_changes():
+            if self.has_uncommitted_changes():
                 raise RuntimeError(
                     "Cannot checkout branch because the repository "
                     "contains uncommitted changes."
@@ -245,12 +217,6 @@ class GitTool:
         except Exception as error:
             logger.error(f"Failed to checkout branch '{branch_name}': {error}")
             raise
-
-    def delete_branch(self, branch_name: str):
-        pass
-
-    def get_all_branches(self) -> List[str]:
-        pass
 
     def is_branch_exists(self, branch_name: str) -> bool:
         try:
@@ -293,43 +259,46 @@ class GitTool:
         )
         return True
 
-    def has_uncommited_changes(self) -> bool:
-        try:
-            status = self.get_repository_status()
-            has_changes = status.has_changes
-            logger.info(f"Repository has uncommitted changes: {has_changes}")
-            return has_changes
-
-        except Exception as error:
-            logger.error(f"Failed to check repository changes: {error}")
-            raise
-
     # ==========================================================
     # Remote
     # ==========================================================
-
-    def fetch(self):
-        pass
 
     def pull_changes(
         self,
         remote: str = "origin",
         branch_name: str | None = None,
-    ) -> str:
+) -> str:
         try:
+            # Validate remote
+            if not remote or not remote.strip():
+                raise ValueError(
+                    "Remote name cannot be empty."
+                )
+
+            remote = remote.strip()
+
+            # Check if remote exists
             if remote not in self.repo.remotes:
                 raise ValueError(
                     f"Remote '{remote}' does not exist."
                 )
 
+            # Use current branch when branch is not provided
             if branch_name is None:
                 branch_name = self.get_current_branch()
+            else:
+                branch_name = branch_name.strip()
 
+                # Validate branch name
+                self.validate_branch_name(branch_name)
+
+            # Check if branch exists
             if not self.is_branch_exists(branch_name):
                 raise ValueError(
                     f"Branch '{branch_name}' does not exist."
                 )
-            
+
+            # Ensure requested branch is currently checked out
             current_branch = self.get_current_branch()
 
             if current_branch != branch_name:
@@ -339,12 +308,15 @@ class GitTool:
                     f"'{current_branch}'."
                 )
 
+            # Pull changes
             remote_repo = self.repo.remote(remote)
             remote_repo.pull()
+
             logger.info(
                 f"Successfully pulled changes for "
                 f"branch '{branch_name}' from '{remote}'."
             )
+
             return branch_name
 
         except Exception as error:
@@ -358,36 +330,62 @@ class GitTool:
         self,
         remote: str = "origin",
         branch_name: str | None = None,
-    ) -> str:
+) -> str:
         try:
+            # Validate remote
+            if not remote or not remote.strip():
+                raise ValueError(
+                    "Remote name cannot be empty."
+                )
+
+            remote = remote.strip()
+
+            # Check if remote exists
             if remote not in self.repo.remotes:
                 raise ValueError(
                     f"Remote '{remote}' does not exist."
                 )
 
+            # Use current branch when branch is not provided
             if branch_name is None:
                 branch_name = self.get_current_branch()
+            else:
+                branch_name = branch_name.strip()
+                # Validate branch name
+                self.validate_branch_name(branch_name)
 
+            # Check if branch exists
             if not self.is_branch_exists(branch_name):
                 raise ValueError(
                     f"Branch '{branch_name}' does not exist."
                 )
-            
+
+            # Push changes
             remote_repo = self.repo.remote(remote)
-            remote_repo.push(
+
+            push_results = remote_repo.push(
                 branch_name,
                 set_upstream=True
             )
+
+            # Verify push result
+            for push_result in push_results:
+                if push_result.flags & push_result.ERROR:
+                    raise RuntimeError(
+                        f"Push failed: {push_result.summary}"
+                    )
+
             logger.info(
                 f"Successfully pushed branch "
                 f"'{branch_name}' to remote '{remote}'."
             )
+
             return branch_name
-            
+
         except Exception as error:
             logger.error(
                 f"Failed to push branch "
-                f"'{branch_name}' to remote '{remote}': {error}"
+                f"'{branch_name}' to '{remote}': {error}"
             )
             raise
 
@@ -400,12 +398,10 @@ class GitTool:
         self,
         source_branch: str,
         target_branch: str
-    ) -> str:
+) -> str:
         try:
-            if not source_branch or not target_branch:
-                raise ValueError(
-                    "Source and target branch names are required."
-                )
+            self.validate_branch_name(source_branch)
+            self.validate_branch_name(target_branch)
 
             if source_branch == target_branch:
                 raise ValueError(
@@ -422,17 +418,39 @@ class GitTool:
                     f"Target branch '{target_branch}' does not exist."
                 )
 
+            # Prevent merge when repository has uncommitted changes
+            if self.has_uncommitted_changes():
+                raise RuntimeError(
+                    "Cannot merge branches because the repository "
+                    "contains uncommitted changes."
+                )
+
             current_branch = self.get_current_branch()
 
             if current_branch != target_branch:
                 self.checkout_branch(target_branch)
 
-            self.repo.git.merge(source_branch)
+            try:
+                self.repo.git.merge(source_branch)
+
+            except Exception as error:
+                conflicts = self.merge_conflicts()
+
+                if conflicts:
+                    logger.error(
+                        f"Merge conflicts detected: {conflicts}"
+                    )
+                    raise RuntimeError(
+                        f"Merge failed due to conflicts: {conflicts}"
+                    ) from error
+
+                raise
 
             logger.info(
                 f"Successfully merged '{source_branch}' "
                 f"into '{target_branch}'."
             )
+
             return target_branch
 
         except Exception as error:
@@ -469,11 +487,52 @@ class GitTool:
     # Stash
     # ==========================================================
 
+    def validate_stash_index(self, stash_index: int) -> bool:
+        try:
+            if not isinstance(stash_index, int):
+                raise ValueError(
+                    "Stash index must be an integer."
+                )
+
+            if stash_index < 0:
+                raise ValueError(
+                    "Stash index cannot be negative."
+                )
+
+            stashes = self.do_stash_list()
+
+            if stash_index >= len(stashes):
+                raise ValueError(
+                    f"Stash index '{stash_index}' does not exist."
+                )
+
+            logger.info(
+                f"Stash index '{stash_index}' is valid."
+            )
+
+            return True
+
+        except ValueError:
+            raise
+
+        except Exception as error:
+            logger.error(
+                f"Failed to validate stash index "
+                f"'{stash_index}': {error}"
+            )
+            raise
+
     def do_stash_changes(self) -> str:
         try:
-            result = self.repo.git.stash(
-                "push"
-            )
+            if not self.has_uncommitted_changes():
+                logger.info(
+                    "No uncommitted changes available to stash."
+                )
+                raise RuntimeError(
+                    "No uncommitted changes available to stash."
+                )
+
+            result = self.repo.git.stash("push")
 
             logger.info(
                 "Changes successfully stashed."
@@ -512,6 +571,7 @@ class GitTool:
         stash_index: int = 0
     ) -> str:
         try:
+            self.validate_stash_index(stash_index)
             stash_reference = f"stash@{{{stash_index}}}"
 
             self.repo.git.stash(
@@ -533,9 +593,14 @@ class GitTool:
 
     def do_stash_pop(self) -> str:
         try:
-            result = self.repo.git.stash(
-                "pop"
-            )
+            stashes = self.do_stash_list()
+
+            if not stashes:
+                raise RuntimeError(
+                    "No stashes available to pop."
+                )
+
+            result = self.repo.git.stash("pop")
 
             logger.info(
                 "Latest stash successfully popped."
@@ -549,31 +614,93 @@ class GitTool:
             )
             raise
 
-    def stash_drop(self, stash_index: int = 0):
-        pass
+    def do_stash_drop(self, stash_index: int = 0) -> str:
+        try:
+            self.validate_stash_index(stash_index)
+
+            stash_reference = f"stash@{{{stash_index}}}"
+
+            self.repo.git.stash("drop", stash_reference)
+
+            logger.info(
+                f"Dropped stash '{stash_reference}'."
+            )
+
+            return stash_reference
+
+        except Exception as error:
+            logger.error(
+                f"Failed to drop stash '{stash_index}': {error}"
+            )
+            raise
 
     # ==========================================================
     # Reset
     # ==========================================================
 
-    def do_soft_reset(self, commit_hash: str) -> str:
+    def validate_commit_reference(self, commit_reference: str) -> bool:
         try:
-            if not commit_hash:
+            if not commit_reference or not commit_reference.strip():
                 raise ValueError(
-                    "Commit hash is required."
+                    "Commit reference cannot be empty."
                 )
+
+            commit_reference = commit_reference.strip()
+
+            # Verify that the reference resolves to a valid commit
+            self.repo.commit(commit_reference)
+            logger.info(
+                f"Commit reference '{commit_reference}' is valid."
+            )
+            return True
+
+        except ValueError:
+            raise
+
+        except Exception as error:
+            logger.error(
+                f"Invalid commit reference '{commit_reference}': {error}"
+            )
+            raise ValueError(
+                f"Invalid commit reference: '{commit_reference}'."
+            ) from error
+
+    def validate_reset_target(self, commit_reference: str) -> bool:
+        self.validate_commit_reference(commit_reference)
+
+        target_commit = self.repo.commit(
+            commit_reference
+        )
+
+        current_commit = self.repo.head.commit
+
+        if target_commit.hexsha == current_commit.hexsha:
+            raise ValueError(
+                "Reset target is already the current HEAD."
+            )
+
+        logger.info(
+            f"Reset target '{commit_reference}' is valid."
+        )
+
+        return True
+
+    def do_soft_reset(self, commit_reference: str) -> str:
+        try:
+            self.validate_reset_target(commit_reference)
+            commit_reference = commit_reference.strip()
 
             self.repo.git.reset(
                 "--soft",
-                commit_hash
+                commit_reference
             )
 
             logger.info(
                 f"Soft reset performed to commit "
-                f"'{commit_hash}'."
+                f"'{commit_reference}'."
             )
 
-            return commit_hash
+            return commit_reference
 
         except Exception as error:
             logger.error(
@@ -581,24 +708,22 @@ class GitTool:
             )
             raise
 
-    def do_hard_reset(self, commit_hash: str) -> str:
+    def do_hard_reset(self, commit_reference: str) -> str:
         try:
-            if not commit_hash:
-                raise ValueError(
-                    "Commit hash is required."
-                )
+            self.validate_reset_target(commit_reference)
+            commit_reference = commit_reference.strip()
 
             self.repo.git.reset(
                 "--hard",
-                commit_hash
+                commit_reference
             )
 
             logger.warning(
                 f"Hard reset performed to commit "
-                f"'{commit_hash}'."
+                f"'{commit_reference}'."
             )
 
-            return commit_hash
+            return commit_reference
 
         except Exception as error:
             logger.error(
@@ -610,13 +735,13 @@ class GitTool:
     # Staging Operations
     # ==========================================================
 
-    def add_all_changes(self):
+    def add_all_changes(self) -> list[str]:
         try:
             changed_files = self.get_all_changed_files()
 
             if not changed_files:
                 logger.info("No changes to stage.")
-                return[]
+                return []
 
             self.repo.git.add(A=True)
             logger.info(f"Staged all changes: {changed_files}")
@@ -629,14 +754,49 @@ class GitTool:
 
     def add_file(self, files: list[str]) -> list[str]:
         try:
-            if not files:
-                raise ValueError("No files provided for staging.")
+            if not isinstance(files, list) or not files:
+                raise ValueError(
+                    "Files must be provided as a non-empty list."
+                )
 
-            self.repo.git.add(files)
-            logger.info(f"Staged files: {files}")
+            if not all(isinstance(file, str) for file in files):
+                raise ValueError(
+                    "All file names must be strings."
+                )
+
+            files = [file.strip() for file in files]
+
+            if any(not file for file in files):
+                raise ValueError(
+                    "File names cannot be empty."
+                )
+
+            files = list(dict.fromkeys(files))
+
+            changed_files = self.get_all_changed_files()
+
+            invalid_files = [
+                file
+                for file in files
+                if file not in changed_files
+            ]
+
+            if invalid_files:
+                raise ValueError(
+                    f"The following files have no changes to stage: "
+                    f"{invalid_files}"
+                )
+
+            self.repo.index.add(files)
+
+            logger.info(
+                f"Successfully staged files: {files}"
+            )
 
             return files
 
         except Exception as error:
-            logger.error(f"Failed to stage files {files}: {error}")
+            logger.error(
+                f"Failed to stage files {files}: {error}"
+            )
             raise
