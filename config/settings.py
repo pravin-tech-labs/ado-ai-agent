@@ -13,5 +13,7 @@ class Settings:
     log_file_level: str = os.getenv("LOG_FILE_LEVEL", "DEBUG")
     log_file: str = os.getenv("LOG_FILE", "logs/ado-ai-agent.log")
     environment: str = os.getenv("ENVIRONMENT", "Development")
+    github_token: str = os.getenv("GITHUB_TOKEN", "")
+    github_repository: str = os.getenv("GITHUB_REPOSITORY", "")
 
 settings = Settings()
