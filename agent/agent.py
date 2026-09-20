@@ -3,6 +3,8 @@ import re
 from models.agent_state import AgentState
 from tools.git_tool import GitTool
 from agent.actions import AgentAction
+from tools.github_pr_tool import GitHubPRTool
+from models.pr_request import PullRequestRequest
 
 
 class Agent:
@@ -12,6 +14,7 @@ class Agent:
 
     def __init__(self, repo_path: str = "."):
         self.git_tool = GitTool(repo_path)
+        self.pr_tool = GitHubPRTool()
         self.state = AgentState()
 
     def inspect_repository(self) -> AgentState:
@@ -39,7 +42,16 @@ class Agent:
         if self.state.current_branch == self.state.base_branch:
             return AgentAction.CREATE_BRANCH
 
-        return AgentAction.STAGE_CHANGES
+        if not self.state.committed:
+            return AgentAction.STAGE_CHANGES
+
+        if not self.state.pushed:
+            return AgentAction.PUSH
+
+        if not self.state.pr_created:
+            return AgentAction.CREATE_PR
+
+        return AgentAction.NO_ACTION
 
     def generate_branch_name(self, task_description: str) -> str:
         """
@@ -157,3 +169,31 @@ class Agent:
             "target_branch": self.state.base_branch,
             "title": self.state.commit_message,
         }
+
+    def create_pull_request(self, description: str = "") -> str:
+        """Create a pull request using the prepared workflow state."""
+        if not self.state.pushed:
+            raise RuntimeError(
+                "Changes must be pushed before creating a pull request."
+            )
+
+        if self.state.pr_created:
+            raise RuntimeError(
+                "Pull request has already been created."
+            )
+
+        pr_data = self.prepare_pull_request()
+
+        request = PullRequestRequest(
+            source_branch=pr_data["source_branch"],
+            target_branch=pr_data["target_branch"],
+            title=pr_data["title"],
+            description=description.strip(),
+        )
+
+        pr_url = self.pr_tool.create_pull_request(request)
+
+        self.state.pull_request_url = pr_url
+        self.state.pr_created = True
+
+        return pr_url

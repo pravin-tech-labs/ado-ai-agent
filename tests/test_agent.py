@@ -289,3 +289,56 @@ def test_prepare_pull_request_requires_target_branch(temp_repo):
 
     with pytest.raises(RuntimeError):
         agent.prepare_pull_request()
+
+def test_determine_next_action_full_workflow(monkeypatch):
+    agent = Agent()
+
+    agent.state.changed_files = ["app.py"]
+    agent.state.current_branch = "main"
+    agent.state.base_branch = "main"
+
+    assert agent.determine_next_action() == AgentAction.CREATE_BRANCH
+
+    agent.state.current_branch = "feature/test"
+    assert agent.determine_next_action() == AgentAction.STAGE_CHANGES
+
+    agent.state.committed = True
+    assert agent.determine_next_action() == AgentAction.PUSH
+
+    agent.state.pushed = True
+    assert agent.determine_next_action() == AgentAction.CREATE_PR
+
+    agent.state.pr_created = True
+    assert agent.determine_next_action() == AgentAction.NO_ACTION
+
+def test_create_pull_request(monkeypatch):
+    agent = Agent()
+
+    agent.state.pushed = True
+    agent.state.target_branch = "feature/login-tests"
+    agent.state.base_branch = "main"
+    agent.state.commit_message = "Add login tests"
+
+    def fake_create_pull_request(request):
+        assert request.source_branch == "feature/login-tests"
+        assert request.target_branch == "main"
+        assert request.title == "Add login tests"
+        assert request.description == "Automated login test improvements."
+
+        return "https://github.com/owner/repository/pull/1"
+
+    monkeypatch.setattr(
+        agent.pr_tool,
+        "create_pull_request",
+        fake_create_pull_request,
+    )
+
+    result = agent.create_pull_request(
+        "Automated login test improvements."
+    )
+
+    assert result == "https://github.com/owner/repository/pull/1"
+    assert agent.state.pull_request_url == (
+        "https://github.com/owner/repository/pull/1"
+    )
+    assert agent.state.pr_created is True

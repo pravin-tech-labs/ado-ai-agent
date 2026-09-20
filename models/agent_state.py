@@ -18,5 +18,5 @@ class AgentState:
     committed: bool = False
     pushed: bool = False
     pr_created: bool = False
-
+    pull_request_url: str = ""
     error: str | None = None
